@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://icon.png" type="Texture" id=1]
+[ext_resource path="res://scenes/DearGoTeria/MoveableSprite.cs" type="Script" id=2]
+
+[sub_resource type="CircleShape2D" id=1]
+
+[node name="DearGoTeria" type="Node"]
+
+[node name="MoveableSprite" type="Sprite" parent="."]
+position = Vector2( 296, 185 )
+texture = ExtResource( 1 )
+script = ExtResource( 2 )
+
+[node name="Area2D" type="Area2D" parent="MoveableSprite"]
+
+[node name="Hitbox" type="CollisionShape2D" parent="MoveableSprite/Area2D"]
+scale = Vector2( 3.44004, 3.44004 )
+shape = SubResource( 1 )
+
+[connection signal="mouse_entered" from="MoveableSprite/Area2D" to="MoveableSprite" method="OnMouseEntered"]
+[connection signal="mouse_exited" from="MoveableSprite/Area2D" to="MoveableSprite" method="OnMouseExited"]
