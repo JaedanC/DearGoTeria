@@ -3,4 +3,4 @@
 .ionide
 .mono
 .vs
-
+*.DotSettings.user

@@ -42,12 +42,12 @@ public class MoveableSprite : Sprite
     public void OnMouseEntered()
     {
         mouseInside = true;
-        ImGuiLog.Debug("In");
+        // ImGuiLog.Debug("In");
     }
     
     public void OnMouseExited()
     {
         mouseInside = false;
-        ImGuiLog.Debug("Out");
+        // ImGuiLog.Debug("Out");
     }
 }

@@ -1,5 +1,7 @@
 using System;
 using System.Numerics;
+using Godot;
+using Vector2 = System.Numerics.Vector2;
 
 ///
 /// Provides helper methods/abstractions and/or extensions to assist in writing
@@ -7,6 +9,7 @@ using System.Numerics;
 /// 
 public static class Extensions
 {
+    public static Color BlankColour = new Color(0, 0, 0, 0);
     private static readonly long TimeNow = System.Diagnostics.Stopwatch.GetTimestamp();
 
     ///
@@ -42,6 +45,11 @@ public static class Extensions
     public static Godot.Vector2 SystemVec2ToGodotVec2(Vector2 vec2)
     {
         return new Godot.Vector2(vec2.X, vec2.Y);
+    }
+
+    public static Color SystemFloatVec4ToGodotColor(Vector4 colour)
+    {
+        return new Color(colour.X, colour.Y, colour.Z, colour.W);
     }
 
     public static Vector4 ColorToFloat(Vector4 colour)

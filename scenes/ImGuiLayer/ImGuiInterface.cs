@@ -19,11 +19,16 @@ public class ImGuiInterface : ImGuiNode
     private ViewportContainer? imguiContainer;
     private Viewport? gameViewport;
     private Godot.Vector2 gameWindowPosition = Godot.Vector2.Zero;
-    private Node? scene;
     private Rect2 gameViewportRect;
     private bool mouseInsideGame;
 
     private Generic.List<ImGuiLogData>? imguiLogData;
+
+    private readonly PackedScene gameScene = GD.Load<PackedScene>("scenes/DearGoTeria/Game/DearGoTeria.tscn");
+    private readonly PackedScene worldGenerationScene = GD.Load<PackedScene>("scenes/DearGoTeria/WorldGeneration/WorldGeneration.tscn");
+    private Node? gameInstance;
+    private Node? worldGenerationInstance;
+    private Node? currentScene;
 
 
     public override void _Ready()
@@ -41,7 +46,11 @@ public class ImGuiInterface : ImGuiNode
 
         gameContainer = GetTree().Root.GetChild(0).GetChild<ViewportContainer>(0);
         gameViewport = gameContainer.GetChild<Viewport>(0);
-        scene = gameViewport.GetChild(0);
+        
+        gameInstance = gameScene.Instance();
+        worldGenerationInstance = worldGenerationScene.Instance();
+        SetMainScene(gameInstance);
+        
         imguiContainer = GetTree().Root.GetChild(0).GetChild<ViewportContainer>(1);
         Assert.True(gameViewport.RenderTargetVFlip);
 
@@ -72,6 +81,18 @@ public class ImGuiInterface : ImGuiNode
                 Function = ImGuiLog.Critical
             }
         };
+    }
+
+    private void SetMainScene(Node scene)
+    {
+        while (gameViewport!.GetChildren().Count > 0)
+        {
+            var child = gameViewport!.GetChild(0);
+            gameViewport.RemoveChild(child);
+        }
+
+        gameViewport.AddChild(scene);
+        currentScene = scene;
     }
 
     public override void _Process(float delta)
@@ -111,6 +132,9 @@ public class ImGuiInterface : ImGuiNode
     public override void Layout()
     {
         MainOverlay();
+
+        if (currentScene is ISceneImgui customImgui)
+            customImgui.SceneImGui();
     }
 
     private int memoryGraphHeight = 100;
@@ -121,6 +145,7 @@ public class ImGuiInterface : ImGuiNode
     private bool showFpsOverlay = true;
     private bool showDemoWindow = false;
     private bool showLogWindow = true;
+    private bool sceneSelector = true;
 
     private void MainOverlay()
     {
@@ -141,6 +166,7 @@ public class ImGuiInterface : ImGuiNode
             ImGui.Checkbox("FPS overlay", ref showFpsOverlay);
             ImGui.Checkbox("Demo window", ref showDemoWindow);
             ImGui.Checkbox("Log window", ref showLogWindow);
+            ImGui.Checkbox("Scene selector", ref sceneSelector);
         }
 
         ImGui.End();
@@ -153,6 +179,7 @@ public class ImGuiInterface : ImGuiNode
         if (showGameWindow) GameWindow(ref showGameWindow);
         if (showDemoWindow) ImGui.ShowDemoWindow(ref showDemoWindow);
         if (showLogWindow) LogWindow(ref showLogWindow);
+        if (sceneSelector) SceneSelector(ref sceneSelector);
     }
 
     private void DebugWindow(ref bool open)
@@ -163,20 +190,17 @@ public class ImGuiInterface : ImGuiNode
 
             if (ImGui.CollapsingHeader("FPS"))
             {
-                ImGui.Columns(3);
                 var vsync = OS.VsyncEnabled;
                 ImGui.Checkbox("Enable VSync", ref vsync);
                 OS.VsyncEnabled = vsync;
 
-                ImGui.NextColumn();
+                ImGui.SameLine();
 
                 var fullscreen = OS.WindowFullscreen;
                 ImGui.Checkbox("Fullscreen", ref fullscreen);
                 OS.WindowFullscreen = fullscreen;
 
-                ImGui.NextColumn();
-
-                var monitors = new System.Collections.Generic.List<string>();
+                var monitors = new Generic.List<string>();
                 for (var i = 0; i < OS.GetScreenCount(); i++)
                 {
                     monitors.Add((i + 1) + "");
@@ -202,11 +226,11 @@ public class ImGuiInterface : ImGuiNode
                 ImGui.Columns(1);
 
                 var targetFps = Engine.TargetFps;
-                ImGui.SliderInt("Target fps", ref targetFps, 0, 1000);
+                ImGui.SliderInt("limit fps", ref targetFps, 0, 1000);
                 Engine.TargetFps = targetFps;
 
                 var targetPhysicsFps = Engine.IterationsPerSecond;
-                ImGui.SliderInt("Target physics fps", ref targetPhysicsFps, 1, 60);
+                ImGui.SliderInt("physics fps", ref targetPhysicsFps, 1, 60);
                 Engine.IterationsPerSecond = targetPhysicsFps;
             }
 
@@ -279,11 +303,16 @@ public class ImGuiInterface : ImGuiNode
                     gameViewportRect.Position.x, gameViewportRect.Position.y,
                     gameViewportRect.Size.x, gameViewportRect.Size.y));
                 ImGui.Text(string.Format("MouseInsideGame: {0}", mouseInsideGame));
+                ImGui.TextWrapped($"Executable path: {OS.GetExecutablePath()}");
+                ImGui.TextWrapped($"Config directory: {OS.GetConfigDir()}");
+                ImGui.TextWrapped($"Data directory: {OS.GetDataDir()}");
             }
 
             if (ImGui.CollapsingHeader("Scene Graph"))
             {
+                ImGui.BeginChild("Debug Window", new Vector2(0, ImGui.GetFontSize() * 20), false, ImGuiWindowFlags.HorizontalScrollbar);
                 ShowSceneGraph(GetTree().Root);
+                ImGui.EndChild();
             }
 
             if (ImGui.CollapsingHeader("Assertions"))
@@ -398,7 +427,6 @@ public class ImGuiInterface : ImGuiNode
         public LogFunction Function;
     };
 
-
     private bool showColours = false;
     private bool showLogTesters = false;
     private bool followText = true;
@@ -490,7 +518,6 @@ public class ImGuiInterface : ImGuiNode
             ImGui.PopStyleColor();
         }
 
-
         if (followText)
             ImGui.SetScrollHereY(0);
 
@@ -503,5 +530,34 @@ public class ImGuiInterface : ImGuiNode
         }
 
         ImGui.End();
+    }
+
+    private int sceneId = 0;
+    private void SceneSelector(ref bool open)
+    {
+        
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0);
+        const ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoDecoration |
+                                             ImGuiWindowFlags.AlwaysAutoResize |
+                                             ImGuiWindowFlags.NoFocusOnAppearing |
+                                             ImGuiWindowFlags.NoNav |
+                                             ImGuiWindowFlags.NoDocking;
+        ImGui.SetNextWindowBgAlpha(0.35f); // Transparent background
+
+        if (ImGui.Begin("Scene Selector", ref open))
+        {
+            if (ImGui.RadioButton("Game Scene", ref sceneId, 0))
+                SetMainScene(gameInstance!);
+            ImGui.SameLine();
+            if (ImGui.RadioButton("World Generation", ref sceneId, 1))
+                SetMainScene(worldGenerationInstance!);
+        }
+
+        ImGui.End();
+        ImGui.PopStyleVar();
+        ImGui.PopStyleVar();
+        ImGui.PopStyleVar();
     }
 }
