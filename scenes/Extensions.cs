@@ -80,4 +80,18 @@ public static class Extensions
 
         return (guess % range) + start;
     }
+    
+    public static Color ColorLerp(Color first, Color second, float mix)
+    {
+        if (mix <= 0)
+            return first;
+        if (mix >= 1)
+            return second;
+        return new Color(
+            Mathf.Lerp(first.r, second.r, mix),
+            Mathf.Lerp(first.g, second.g, mix),
+            Mathf.Lerp(first.b, second.b, mix),
+            Mathf.Lerp(first.a, second.a, mix)
+        );
+    }
 }

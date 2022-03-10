@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using Godot;
-using ImGuiNET;
 
 public static class ImageTools
 {
@@ -37,7 +36,7 @@ public static class ImageTools
         newImage.Unlock();
         return newImage;
     }
-    
+
     ///
     /// Draws a circle of a desired radius, at location. Any pixels out of range are ignored.
     /// Requires the image to be unlocked.
@@ -45,13 +44,12 @@ public static class ImageTools
     public static void DigCircle(Image image, Vector2 location, double radius, Color colour)
     {
         image.Lock();
-
         for (var i = location.x - radius; i < location.x + radius + 1; i++)
         for (var j = location.y - radius; j < location.y + radius + 1; j++)
         {
             if (i < 0 || i > image.GetWidth() - 1 || j < 0 || j > image.GetHeight() - 1)
                 continue;
-            var blockLocation = new Vector2((int)Math.Round(i), (int)Math.Round(j));
+            var blockLocation = new Vector2((int) Math.Round(i), (int) Math.Round(j));
             var distance = location.DistanceTo(blockLocation);
             if (distance <= radius)
                 image.SetPixelv(blockLocation, colour);
@@ -166,36 +164,35 @@ public static class ImageTools
 
     public enum Blend
     {
-        Flatten,    // Top will replace base if top.a > 0
-        Dig,        // Base will be blank if top.a > 0
-        Add,        // Equals top + base
-        Subtract,   // Equals top - base
-        Multiply,   // Equals top * base
-        Overlay     // Uses overlay algorithm from wikipedia
+        Flatten, // Top will replace base if top.a > 0
+        Dig, // Base will be blank if top.a > 0
+        Add, // Equals top + base
+        Subtract, // Equals top - base
+        Multiply, // Equals top * base
+        Overlay // Uses overlay algorithm from wikipedia
     }
 
     ///
     /// This method blends the topLayer image onto the bottom image like in paint.
     /// Select the correct mode using the 'type' parameter. The 'baseLayer' is
-    /// modified in-place.
+    /// modified in-place. Requires the baseLayer and the topLayer to be unlocked.
     ///
-    public static void BlendImages(Image baseLayer, Image topLayer, Blend blendType, Vector2 offset)
+    public static void BlendImages(Image baseLayer, Image topLayer, Blend blendType, Vector2 baseOffset)
     {
         baseLayer.Lock();
         topLayer.Lock();
-
-        for (var topX = 0; topX < topLayer.GetWidth(); topX++)
-        for (var topY = 0; topY < topLayer.GetHeight(); topY++)
+        for (var i = 0; i < topLayer.GetWidth(); i++)
+        for (var j = 0; j < topLayer.GetHeight(); j++)
         {
-            // Calculate the offset for where to read from the image_base
-            // If reading outside the bounds of the image_base, continue
-            var basePixel = new Vector2(topX, topY) + offset;
+            // Calculate the offset for where to read from the baseLayer
+            // If reading outside the bounds of the baseLayer, continue
+            var basePixel = new Vector2(i, j) + baseOffset;
             if (basePixel.x < 0 || basePixel.x >= baseLayer.GetWidth() ||
                 basePixel.y < 0 || basePixel.y >= baseLayer.GetHeight())
                 continue;
 
             // Retrieve each colour for blending
-            var topColour = topLayer.GetPixel(topX, topY);
+            var topColour = topLayer.GetPixel(i, j);
             var baseColour = baseLayer.GetPixelv(basePixel);
 
             switch (blendType)
@@ -254,6 +251,8 @@ public static class ImageTools
                     else
                         newColour.b = 1 - 2 * (1 - baseColour.b) * (1 - topColour.b);
 
+                    newColour.a = 1;
+
                     baseLayer.SetPixelv(basePixel, newColour);
                     break;
                 default:
@@ -263,5 +262,84 @@ public static class ImageTools
 
         baseLayer.Unlock();
         topLayer.Unlock();
+    }
+
+    ///
+    /// This function takes in an image and maps all pixels to black or white depending
+    /// on the supplied step value [0, 1]. If the colour is above the threshold it is
+    /// white. If it is below, the colour is black. In future it may be cool to use
+    /// Simplex noise to modify the threshold over time. Requires the image to be unlocked.
+    /// 
+    public static void BlackWhiteStep(Image image, float step)
+    {
+        image.Lock();
+        for (var i = 0; i < image.GetWidth(); i++)
+        for (var j = 0; j < image.GetHeight(); j++)
+        {
+            var greyness = image.GetPixel(i, j).v;
+            image.SetPixel(i, j, greyness < step ? Colors.Black : Colors.White);
+        }
+
+        image.Unlock();
+    }
+
+    ///
+    /// This function writes a gradient of startColour to endColour using the vector
+    /// direction starting at startPoint. Requires the image to be unlocked.
+    /// 
+    public static void Gradient(Image image, Vector2 startPoint, Vector2 direction, Color startColour, Color endColour)
+    {
+        image.Lock();
+        for (var i = 0; i < image.GetWidth(); i++)
+        for (var j = 0; j < image.GetHeight(); j++)
+        {
+            // From https://stackoverflow.com/a/521538
+            var endpoint = startPoint + direction;
+            var c1 = direction.x * startPoint.x + direction.y * startPoint.y;
+            var c2 = direction.x * endpoint.x + direction.y * endpoint.y;
+            var c = direction.x * i + direction.y * j;
+            var percentage = (c - c1) / (c2 - c1);
+            var newColour = Extensions.ColorLerp(startColour, endColour, percentage);
+            image.SetPixel(i, j, newColour);
+        }
+
+        image.Unlock();
+    }
+
+    ///
+    /// This function takes in an OpenSimplexNoise and draws the resultant 1d noise
+    /// to the screen as a line. Offset is the y value for the midpoint of the simplex
+    /// line to render. This can be used to visualise a 1d OpenSimplexNoise value for
+    /// use elsewhere. Requires the image to be unlocked.
+    /// 
+    public static void SimplexLine(OpenSimplexNoise noise, Image image, float amplitude, int offset)
+    {
+        image.Lock();
+        for (var i = 0; i < image.GetWidth(); i++)
+        {
+            var noiseValue = noise.GetNoise1d(i) * amplitude;
+            for (var j = 0; j < image.GetHeight(); j++)
+                image.SetPixel(i, j, j - offset > noiseValue ? Colors.White : Colors.Black);
+        }
+
+        image.Unlock();
+    }
+
+    ///
+    /// This algorithm writes simplex noise onto the image provided.
+    /// Google the details for more information on each of the parameters.
+    /// Requires the image to be unlocked.
+    /// 
+    public static void SimplexNoise(OpenSimplexNoise noise, Image image)
+    {
+        image.Lock();
+        for (var i = 0; i < image.GetWidth(); i++)
+        for (var j = 0; j < image.GetHeight(); j++)
+        {
+            var noiseValue = (noise.GetNoise2d(i, j) + 1) / 2;
+            image.SetPixel(i, j, new Color(noiseValue, noiseValue, noiseValue));
+        }
+
+        image.Unlock();
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using Godot;
-using ImGuiNET;
 
 public class GenerationAlgorithms
 {
@@ -15,7 +14,7 @@ public class GenerationAlgorithms
         Vector2.Down,
         Vector2.Down + Vector2.Left
     };
-    
+
     ///
     /// This algorithm spawns a number of drunkards (starting pixels) and then walks
     /// them the desired number of steps in any random (8 point) direction. Where ever
@@ -49,7 +48,7 @@ public class GenerationAlgorithms
             {
                 drunkardPosition = startingPoint.Value;
             }
-            
+
             // Choose a random direction
             var reverseDirectionOffset = Directions.Length / 2;
             var previousDirection = rng.Randi() % Directions.Length;
@@ -67,7 +66,7 @@ public class GenerationAlgorithms
                 var safeOffset = rng.Randi() % (Directions.Length - 1) + 1;
                 var nextDirection = (previousDirection + safeOffset) % Directions.Length;
                 drunkardPosition += Directions[nextDirection];
-                
+
                 // Treat the previous direction as the reversed Vector2
                 previousDirection = (nextDirection + reverseDirectionOffset) % Directions.Length;
 
@@ -93,6 +92,7 @@ public class GenerationAlgorithms
                 }
             }
         }
+
         image.Unlock();
     }
 }
