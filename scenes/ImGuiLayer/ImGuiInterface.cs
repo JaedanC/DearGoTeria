@@ -81,6 +81,8 @@ public class ImGuiInterface : ImGuiNode
                 Function = ImGuiLog.Critical
             }
         };
+
+        OS.WindowPosition = new Godot.Vector2(-8, -8);
     }
 
     private void SetMainScene(Node scene)
@@ -303,6 +305,8 @@ public class ImGuiInterface : ImGuiNode
                     gameViewportRect.Position.x, gameViewportRect.Position.y,
                     gameViewportRect.Size.x, gameViewportRect.Size.y));
                 ImGui.Text(string.Format("MouseInsideGame: {0}", mouseInsideGame));
+                ImGui.Text(string.Format("Window Size: {0}", OS.WindowSize));
+                ImGui.Text(string.Format("Window Position: {0}", OS.WindowPosition));
                 ImGui.TextWrapped($"Executable path: {OS.GetExecutablePath()}");
                 ImGui.TextWrapped($"Config directory: {OS.GetConfigDir()}");
                 ImGui.TextWrapped($"Data directory: {OS.GetDataDir()}");

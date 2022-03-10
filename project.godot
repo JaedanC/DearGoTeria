@@ -16,8 +16,8 @@ config/icon="res://icon.png"
 
 [display]
 
-window/size/width=1600
-window/size/height=900
+window/size/width=1920
+window/size/height=1017
 window/vsync/use_vsync=false
 
 [input]

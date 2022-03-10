@@ -15,7 +15,7 @@ public class GenerationAlgorithms
         Vector2.Down,
         Vector2.Down + Vector2.Left
     };
-
+    
     ///
     /// This algorithm spawns a number of drunkards (starting pixels) and then walks
     /// them the desired number of steps in any random (8 point) direction. Where ever
@@ -29,7 +29,7 @@ public class GenerationAlgorithms
     /// 
     public static void DrunkardWalk(
         OpenSimplexNoise noise, ulong seed, Image image, int drunkards,
-        int steps, Vector2? startingPoint, Color colour)
+        int steps, bool useRadius, float maxRadius, Vector2? startingPoint, Color colour)
     {
         image.Lock();
 
@@ -80,13 +80,17 @@ public class GenerationAlgorithms
                 minY = Math.Min(drunkardPosition.y, minY);
                 maxY = Math.Max(drunkardPosition.y, maxY);
 
-                // 1 Pixel Dig
-                image.SetPixelv(drunkardPosition, colour);
-
-                // Multi-pixel Dig
-                // var maxRadius = 2.2;
-                // var randomRadius = ((noise.GetNoise1d(step) + 1) / 2) * maxRadius;
-                // ImageTools.DigCircle(image, drunkardPosition, (int) randomRadius, colour);
+                if (useRadius)
+                {
+                    // Multi-pixel Dig
+                    var randomRadius = ((noise.GetNoise1d(step) + 1) / 2) * maxRadius;
+                    ImageTools.DigCircle(image, drunkardPosition, randomRadius, colour);
+                }
+                else
+                {
+                    // 1 Pixel Dig
+                    image.SetPixelv(drunkardPosition, colour);
+                }
             }
         }
         image.Unlock();

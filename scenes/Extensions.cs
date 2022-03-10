@@ -61,4 +61,23 @@ public static class Extensions
             colour.W / 255
         );
     }
+
+    ///
+    /// Returns a random number between start and finish without being bias
+    /// by naively using the % operator.
+    /// 
+    public static int RangedRandom(Random rng, int start, int end)
+    {
+        Assert.LessThan(start, end);
+        var range = end - start;
+        Assert.GreaterThan(range, 0);
+        var safeRange = int.MaxValue - range;
+        int guess;
+        do
+        {
+            guess = rng.Next();
+        } while (guess > safeRange);
+
+        return (guess % range) + start;
+    }
 }
