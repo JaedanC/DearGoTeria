@@ -1,12 +1,30 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
 public static class ImageTools
 {
+    private static readonly Vector2[] Directions =
+    {
+        Vector2.Left,
+        Vector2.Left + Vector2.Up,
+        Vector2.Up,
+        Vector2.Up + Vector2.Right,
+        Vector2.Right,
+        Vector2.Right + Vector2.Down,
+        Vector2.Down,
+        Vector2.Down + Vector2.Left
+    };
+
     ///
     /// This method returns a blank (black) image of the specified size
     ///
+    public static Image BlankImage(Vector2 imageSize)
+    {
+        return BlankImage(imageSize, Extensions.BlankColour);
+    }
+
     public static Image BlankImage(Vector2 imageSize, Color colour)
     {
         var image = new Image();
@@ -21,7 +39,7 @@ public static class ImageTools
     /// 
     public static Image InvertImage(Image image)
     {
-        var newImage = BlankImage(image.GetSize(), Colors.White);
+        var newImage = BlankImage(image.GetSize());
         image.Lock();
         newImage.Lock();
 
@@ -287,20 +305,63 @@ public static class ImageTools
     /// This function writes a gradient of startColour to endColour using the vector
     /// direction starting at startPoint. Requires the image to be unlocked.
     /// 
-    public static void Gradient(Image image, Vector2 startPoint, Vector2 direction, Color startColour, Color endColour)
+    public static void Gradient(Image image, Vector2 startPoint, Vector2 endPoint, Color startColour, Color endColour)
     {
         image.Lock();
         for (var i = 0; i < image.GetWidth(); i++)
         for (var j = 0; j < image.GetHeight(); j++)
         {
             // From https://stackoverflow.com/a/521538
-            var endpoint = startPoint + direction;
-            var c1 = direction.x * startPoint.x + direction.y * startPoint.y;
-            var c2 = direction.x * endpoint.x + direction.y * endpoint.y;
-            var c = direction.x * i + direction.y * j;
+            var a = endPoint.x - startPoint.x;
+            var b = endPoint.y - startPoint.y;
+            var c1 = a * startPoint.x + b * startPoint.y;
+            var c2 = a * endPoint.x + b * endPoint.y;
+            var c = a * i + b * j;
             var percentage = (c - c1) / (c2 - c1);
             var newColour = Extensions.ColorLerp(startColour, endColour, percentage);
             image.SetPixel(i, j, newColour);
+        }
+
+        image.Unlock();
+    }
+    
+    public static void Gradient(Image image, Vector2 startPoint, Vector2 endPoint, List<ValueTuple<Color, float>> gaps)
+    {
+        Assert.GreaterThanEquals(gaps.Count, 2);
+        Assert.Equals(0, gaps[0].Item2, 0.0001f);
+        Assert.Equals(1, gaps[gaps.Count - 1].Item2, 0.0001f);
+        image.Lock();
+        for (var i = 0; i < image.GetWidth(); i++)
+        for (var j = 0; j < image.GetHeight(); j++)
+        {
+            // From https://stackoverflow.com/a/521538
+            var a = endPoint.x - startPoint.x;
+            var b = endPoint.y - startPoint.y;
+            var c1 = a * startPoint.x + b * startPoint.y;
+            var c2 = a * endPoint.x + b * endPoint.y;
+            var c = a * i + b * j;
+            var percentage = (c - c1) / (c2 - c1);
+
+            if (percentage < 0)
+                image.SetPixel(i, j, gaps[0].Item1);
+            
+            if (percentage > 1)
+                image.SetPixel(i, j, gaps[gaps.Count - 1].Item1);
+
+            for (var colourIdx = 0; colourIdx < gaps.Count - 1; colourIdx++)
+            {
+                var (firstColour, firstFloat) = gaps[colourIdx];
+                var (secondColour, secondFloat) = gaps[colourIdx + 1];
+                
+                Assert.GreaterThanEquals(secondFloat, firstFloat);
+                if (firstFloat <= percentage && percentage <= secondFloat)
+                {
+                    var gapPercentage = (percentage - firstFloat) / (secondFloat - firstFloat);
+                    var newColour = Extensions.ColorLerp(firstColour, secondColour, gapPercentage);
+                    image.SetPixel(i, j, newColour);
+                    break;
+                }
+            }
         }
 
         image.Unlock();
@@ -341,5 +402,122 @@ public static class ImageTools
         }
 
         image.Unlock();
+    }
+
+    public static void DrunkardWalk(
+        OpenSimplexNoise noise, ulong seed, Image image, int drunkards,
+        int steps, bool useRadius, float maxRadius, Vector2? startingPoint, Color colour)
+    {
+        image.Lock();
+
+        var rng = new RandomNumberGenerator();
+        rng.Seed = seed;
+        for (var i = 0; i < drunkards; i++)
+        {
+            Vector2 drunkardPosition;
+            if (startingPoint == null)
+            {
+                drunkardPosition = new Vector2(
+                    (int) rng.Randi() % image.GetWidth(),
+                    (int) rng.Randi() % image.GetHeight()
+                );
+            }
+            else
+            {
+                drunkardPosition = startingPoint.Value;
+            }
+
+            // Choose a random direction
+            var reverseDirectionOffset = Directions.Length / 2;
+            var previousDirection = rng.Randi() % Directions.Length;
+
+            var minX = drunkardPosition.x;
+            var maxX = drunkardPosition.x;
+            var minY = drunkardPosition.y;
+            var maxY = drunkardPosition.y;
+            for (var step = 0; step < steps + 1; step++)
+            {
+                // Only let the next direction go in 7 directions -> not backward. This
+                // makes caves look more narrow as the algorithm will much more rarely
+                // turn back on itself.
+                // A number in this range [1, Directions.Length]
+                var safeOffset = rng.Randi() % (Directions.Length - 1) + 1;
+                var nextDirection = (previousDirection + safeOffset) % Directions.Length;
+                drunkardPosition += Directions[nextDirection];
+
+                // Treat the previous direction as the reversed Vector2
+                previousDirection = (nextDirection + reverseDirectionOffset) % Directions.Length;
+
+                if (drunkardPosition.x < 0 || drunkardPosition.x >= image.GetWidth() ||
+                    drunkardPosition.y < 0 || drunkardPosition.y >= image.GetHeight())
+                    continue;
+
+                minX = Math.Min(drunkardPosition.x, minX);
+                maxX = Math.Max(drunkardPosition.x, maxX);
+                minY = Math.Min(drunkardPosition.y, minY);
+                maxY = Math.Max(drunkardPosition.y, maxY);
+
+                if (useRadius)
+                {
+                    // Multi-pixel Dig
+                    var randomRadius = ((noise.GetNoise1d(step) + 1) / 2) * maxRadius;
+                    DigCircle(image, drunkardPosition, randomRadius, colour);
+                }
+                else
+                {
+                    // 1 Pixel Dig
+                    image.SetPixelv(drunkardPosition, colour);
+                }
+            }
+        }
+
+        image.Unlock();
+    }
+
+    ///
+    /// Given an image, recolour all instanced of colour 'floodFillColour' that are
+    /// 'islands'. Islands are pieces of land that would not be found by a
+    /// horizontally or vertically flood fill starting at all edges of the image. All
+    /// islands are coloured to 'newIslandColour'. This function will assume the
+    /// islands are the same colour as the 'floodFillColour'.
+    /// 
+    public static Image ColourIslands(Image image, Color floodFillColour, Color newIslandColour)
+    {
+        return ColourIslands(image, floodFillColour, floodFillColour, newIslandColour);
+    }
+
+    public static Image ColourIslands(Image image, Color floodFillColour, Color oldIslandColour, Color newIslandColour)
+    {
+        var newImage = AddBorder(image, 1, floodFillColour);
+        FloodFill(newImage, Vector2.Zero, Colors.Blue);
+        ChangeColour(newImage, oldIslandColour, newIslandColour);
+        ChangeColour(newImage, Colors.Blue, floodFillColour);
+        return newImage;
+    }
+
+    public static void GradientPlaceStickers(Random random, Image baseImage, Image gradient, List<Image> stickers)
+    {
+        Assert.Equals(gradient.GetSize(), baseImage.GetSize(), "Gradient and base image must be the same size");
+        gradient.Lock();
+        foreach (var sticker in stickers)
+        {
+            while (true)
+            {
+                var stickerLocation = new Vector2(
+                    Extensions.RangedRandom(random, -sticker.GetWidth(), baseImage.GetWidth()),
+                    Extensions.RangedRandom(random, -sticker.GetHeight(), baseImage.GetHeight()));
+
+                var gradientTest =
+                    gradient.GetPixelv(Extensions.ClampGodotVector2(stickerLocation, gradient.GetSize()));
+                var testResult = random.NextDouble();
+                if (testResult > gradientTest.v)
+                    continue;
+
+                BlendImages(baseImage, sticker, Blend.Dig, stickerLocation);
+                break;
+            }
+        }
+
+        gradient.Unlock();
     }
 }

@@ -20,7 +20,7 @@ public static class Assert
         ImGuiLog.Critical($"Assertion Failed\n {message}");
         var stackTrace = Environment.StackTrace.Split('\n');
         ImGuiLog.Critical(string.Join("\n", stackTrace.Skip(2)));
-        // throw new AssertionException(message);
+        throw new AssertionException(message);
     }
 
     public static void Fail(string message = "")
@@ -32,6 +32,14 @@ public static class Assert
     public static void Equals(object actual, object expected, string message = "")
     {
         if (actual.Equals(expected))
+            return;
+
+        PrintStackTrace($"Expected: {expected}\nActual: {actual}");
+    }
+    
+    public static void Equals(float actual, float expected, float tolerance, string message = "")
+    {
+        if (Math.Abs(actual - expected) < tolerance)
             return;
 
         PrintStackTrace($"Expected: {expected}\nActual: {actual}");

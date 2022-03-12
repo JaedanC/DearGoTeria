@@ -9,32 +9,27 @@ using System.Linq;
 /// dependencies are finished. When this job finishes, it will notify all the
 /// waiters and give them the result of the calculation.
 ///
-/// To ensure deterministics random results in the delegate function, an
+/// To ensure deterministic random results in the delegate function, an
 /// external entity (usually a JobGraph) is required to inject a seed that we
 /// can create our Random() from.
 ///
 /// According to Bungie's Barry Genova in the GDC talk 'Multithreading the
 /// Entire Destiny Engine', jobs should take around 0.5ms or 2ms to complete to
-/// make full use of the overthread of using a thread. This however may not be
-/// better than just trying to utilise as much of the CPU as possible.
+/// counteract the overhead of using a thread. This, however, may not be
+/// better than aggressively trying to utilise as much of the CPU as possible.
 ///
 public class Job
 {
     public string Name { get; }
-
     public List<Job> Waiters { get; } = new List<Job>();
-
     public List<Job> Dependencies { get; } = new List<Job>();
-
     public object? Args { get; }
     public object? Result = null;
-
-    public delegate object WorkDelegate(Random random, object[]? dependencyResults, object? args);
-
+    public delegate object WorkDelegate(Random random, List<object> dependencyResults, object? args);
     private readonly WorkDelegate workFunction;
 
     private int dependenciesDone = 0;
-    private object[]? dependencyResults = null;
+    private readonly List<object> dependencyResults = new List<object>();
     private readonly object dependencyResultsLock = new object();
     private bool isDone = false;
     private readonly object isDoneLock = new object();
@@ -70,10 +65,7 @@ public class Job
         lock (isDoneLock)
         {
             Assert.False(isDone);
-
-            // Used for profiling
             Result = workFunction(random!, dependencyResults, Args);
-
             isDone = true;
             foreach (var waiter in Waiters)
             {
@@ -81,9 +73,7 @@ public class Job
                 {
                     waiter.GiveResult(this, Result);
                     if (waiter.CanRun())
-                    {
                         jobGraph.MarkJobRunnable(waiter);
-                    }
                 }
             }
 
@@ -115,9 +105,12 @@ public class Job
         Assert.False(CanRun());
         lock (dependencyResultsLock)
         {
-            dependencyResults ??= new object[Dependencies.Count];
             var resultIndex = Dependencies.IndexOf(fromJob);
-            Assert.Null(dependencyResults[resultIndex]);
+
+            while (resultIndex >= dependencyResults.Count)
+                dependencyResults.Add(new object());
+
+            Assert.LessThan(resultIndex, dependencyResults.Count);
             dependencyResults[resultIndex] = fromJobResult;
             dependenciesDone += 1;
         }
@@ -132,24 +125,14 @@ public class Job
         string depString;
         string waitString;
         if (Dependencies.Count > 0)
-        {
-            depString = string.Format("[{0}]",
-                string.Join(", ", Dependencies.Select(i => i.Name)));
-        }
+            depString = string.Format("[{0}]", string.Join(", ", Dependencies.Select(i => i.Name)));
         else
-        {
             depString = "ROOT";
-        }
 
         if (Waiters.Count > 0)
-        {
-            waitString = string.Format("[{0}]",
-                string.Join(", ", Waiters.Select(i => i.Name)));
-        }
+            waitString = string.Format("[{0}]", string.Join(", ", Waiters.Select(i => i.Name)));
         else
-        {
             waitString = "TAIL";
-        }
 
         return string.Format("  {0} --> {1} (CanRun:{2})(Done:{3}) --> {4}",
             depString, Name, CanRun(), isDone, waitString);

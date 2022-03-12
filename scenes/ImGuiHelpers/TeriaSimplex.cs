@@ -13,4 +13,9 @@ public class TeriaSimplex : OpenSimplexNoise
     public TeriaSimplex()
     {
     }
+
+    public TeriaSimplex Copy()
+    {
+        return new TeriaSimplex(Seed, Octaves, Period, Persistence);
+    }
 }

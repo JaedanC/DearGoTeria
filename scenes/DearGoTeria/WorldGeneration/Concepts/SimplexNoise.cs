@@ -3,7 +3,7 @@ using ImGuiNET;
 
 namespace DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts
 {
-    public class SimplexNoise
+    public class SimplexNoise : IWorldGenConcept
     {
         private readonly ImageTexture worldTexture = new ImageTexture();
         private OpenSimplexNoise noise = new TeriaSimplex();
@@ -11,12 +11,10 @@ namespace DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts
 
         public void Run()
         {
-            ImGui.PushID("SimplexNoise");
-            ImGuiSlider.Vector2("World size", ref worldSize, 100, 1000);
+            ImGuiSlider.Vector2("World size", ref worldSize, 100, 1500);
             ImGuiSlider.Simplex(ref noise);
-            ImGui.PopID();
 
-            var image = ImageTools.BlankImage(worldSize, Extensions.BlankColour);
+            var image = ImageTools.BlankImage(worldSize);
             ImageTools.SimplexNoise(noise, image);
             ImGuiImage.Create(worldTexture, image);
         }

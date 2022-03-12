@@ -47,9 +47,14 @@ public static class Extensions
         return new Godot.Vector2(vec2.X, vec2.Y);
     }
 
-    public static Color SystemFloatVec4ToGodotColor(Vector4 colour)
+    public static Color SystemVec4ToGodotColor(Vector4 colour)
     {
         return new Color(colour.X, colour.Y, colour.Z, colour.W);
+    }
+    
+    public static Vector4 GodotColorToSystemVec4(Color colour)
+    {
+        return new Vector4(colour.r, colour.g, colour.b, colour.a);
     }
 
     public static Vector4 ColorToFloat(Vector4 colour)
@@ -93,5 +98,14 @@ public static class Extensions
             Mathf.Lerp(first.b, second.b, mix),
             Mathf.Lerp(first.a, second.a, mix)
         );
+    }
+
+    public static Godot.Vector2 ClampGodotVector2(Godot.Vector2 vec, Godot.Vector2 clamp)
+    {
+        vec.x = Mathf.Max(vec.x, 0);
+        vec.y = Mathf.Max(vec.y, 0);
+        vec.x = Mathf.Min(vec.x, clamp.x);
+        vec.y = Mathf.Min(vec.y, clamp.y);
+        return vec;
     }
 }

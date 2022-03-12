@@ -17,13 +17,25 @@ public static class ImGuiSlider
         var octaves = noise.Octaves;
         var period = noise.Period;
         var persistence = noise.Persistence;
-        ImGui.SliderInt("Simplex seed", ref seed, 0, 50);
-        ImGui.SliderInt("Simplex octaves", ref octaves, 0, 9);
-        ImGui.SliderFloat("Simplex period", ref period, 0, 100);
+        ImGui.DragInt("Simplex seed", ref seed, 1);
+        ImGui.SliderInt("Simplex octaves", ref octaves, 1, 9);
+        ImGui.SliderFloat("Simplex period", ref period, 1, 500);
         ImGui.SliderFloat("Simplex persistence", ref persistence, 0, 5);
         noise.Seed = seed;
         noise.Octaves = octaves;
         noise.Period = period;
         noise.Persistence = persistence;
+    }
+
+    public static void CaveSticker(
+        ref int drunkards, ref int steps, ref int stickerCount, ref float maxDigRadius,
+        ref bool useRadius, ref OpenSimplexNoise noise)
+    {
+        ImGui.SliderInt("Drunkards", ref drunkards, 1, 20);
+        ImGui.SliderInt("Steps", ref steps, 1, 5000);
+        ImGui.SliderInt("Sticker count", ref stickerCount, 1, 300);
+        ImGui.SliderFloat("Max dig radius", ref maxDigRadius, 1, 3);
+        Simplex(ref noise);
+        ImGui.Checkbox("Use radius", ref useRadius);
     }
 }

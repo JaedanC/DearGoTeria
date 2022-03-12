@@ -1,70 +1,39 @@
-using Godot;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using Godot;
 using DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts;
 using ImGuiNET;
-using Vector2 = Godot.Vector2;
 
 public class WorldGeneration : Node, ISceneImgui
 {
-    private const double GroundLevelPercent = 0.2;
-    private const double StoneLevelPercent = 0.45;
-    private const double HellLevelPercent = 0.8;
+    private readonly Dictionary<string, IWorldGenConcept> concepts = 
+        new Dictionary<string, IWorldGenConcept>();
 
-    public struct TeriaWorld
+    public WorldGeneration()
     {
-        public readonly Image Blocks;
-        public readonly ImageTexture BlocksTexture;
-        private readonly Vector2 size;
-        private readonly List<object> loot;
-        public readonly int GroundLevel;
-        public readonly int StoneLevel;
-        public readonly int HellLevel;
-
-        public TeriaWorld(Vector2 size)
-        {
-            this.size = size;
-            Blocks = ImageTools.BlankImage(size, Colors.White);
-            BlocksTexture = new ImageTexture();
-            BlocksTexture.CreateFromImage(Blocks, 0);
-            loot = new List<object>();
-
-            GroundLevel = (int) (size.y * GroundLevelPercent);
-            StoneLevel = (int) (size.y * StoneLevelPercent);
-            HellLevel = (int) (size.y * HellLevelPercent);
-        }
+        concepts.Add("Cave Generation", new CaveGeneration());
+        concepts.Add("Drunkards Live Preview", new DrunkardsLivePreview());
+        concepts.Add("Gradient Line", new GradientLine());
+        concepts.Add("Simplex Line", new SimplexLine());
+        concepts.Add("World Surface", new WorldSurface());
+        concepts.Add("Smooth Cave", new SmoothCave());
+        concepts.Add("Ore Placement", new OrePlacement());
+        concepts.Add("Gradient Stickers", new GradientStickers());
     }
 
-    private readonly CaveGeneration caveGeneration = new CaveGeneration();
-    private readonly DrunkardsLivePreview drunkardsLivePreview = new DrunkardsLivePreview();
-    private readonly GradientLine gradientLine = new GradientLine();
-    private readonly SimplexLine simplexLine = new SimplexLine();
-    private readonly SimplexNoise simplexNoise = new SimplexNoise();
-    private readonly WorldSurface worldSurface = new WorldSurface();
-    
     public void SceneImGui()
     {
         ImGui.Begin("World Generation");
-
-        if (ImGui.CollapsingHeader("Drunkard live preview"))
-            drunkardsLivePreview.Run();
-
-        if (ImGui.CollapsingHeader("Cave generation"))
-            caveGeneration.Run();
-
-        if (ImGui.CollapsingHeader("Simplex line"))
-            simplexLine.Run();
-
-        if (ImGui.CollapsingHeader("Simplex noise"))
-            simplexNoise.Run();
-
-        if (ImGui.CollapsingHeader("Gradient line"))
-            gradientLine.Run();
-
-        if (ImGui.CollapsingHeader("World surface"))
-            worldSurface.Run();
-
+        foreach (var item in concepts)
+        {
+            var name = item.Key;
+            var concept = item.Value;
+            ImGui.PushID(name);
+            
+            if (ImGui.CollapsingHeader(name))
+                concept.Run();
+            ImGui.PopID();
+        }
         ImGui.End();
     }
 }
