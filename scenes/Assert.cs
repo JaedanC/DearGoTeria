@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using ImGuiNET;
 
 ///
 /// Provides an abstraction for asserting conditions.

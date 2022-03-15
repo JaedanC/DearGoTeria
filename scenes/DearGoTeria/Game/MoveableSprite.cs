@@ -1,6 +1,4 @@
 using Godot;
-using System;
-using ImGuiNET;
 
 public class MoveableSprite : Sprite
 {

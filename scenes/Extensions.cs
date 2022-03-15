@@ -13,21 +13,6 @@ public static class Extensions
     private static readonly long TimeNow = System.Diagnostics.Stopwatch.GetTimestamp();
 
     ///
-    /// From https://stackoverflow.com/a/47816154
-    ///
-    public static (T first, S second) Destruct<T, S>(object[] items)
-    {
-        Assert.Equals(items.Length, 2);
-        return ((T) items[0], (S) items[1]);
-    }
-
-    public static (T first, S second) Destruct<T, S>(object items)
-    {
-        Assert.TupleLength(items, 2);
-        return (ValueTuple<T, S>) (items);
-    }
-
-    ///
     /// Returns the number of nanoseconds elapsed since the beginning of the
     /// program.
     ///

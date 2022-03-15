@@ -16,10 +16,9 @@ namespace DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts
         private Vector2 gradientEnd = new Vector2(400, 400);
         private Vector4 gradientStartColour = new Vector4(0, 0, 0, 1);
         private Vector4 gradientEndColour = new Vector4(1, 1, 1, 1);
-        private List<Color> colourGaps = new List<Color>();
-        private List<float> floatGaps = new List<float>();
-
-
+        private readonly List<Color> colourGaps = new List<Color>();
+        private readonly List<float> floatGaps = new List<float>();
+        
         public void Run()
         {
             ImGuiSlider.Vector2("World size", ref worldSize, 100, 1500);
@@ -44,6 +43,7 @@ namespace DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts
             {
                 colourGaps.RemoveAt(colourGaps.Count - 1);
                 floatGaps.RemoveAt(floatGaps.Count - 1);
+                recalculateFloats = true;
             }
 
             if (recalculateFloats)
@@ -65,22 +65,14 @@ namespace DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts
                     float nextFloat;
 
                     if (i == 0)
-                    {
                         previousFloat = 0;
-                    }
                     else
-                    {
                         previousFloat = floatGaps[i - 1];
-                    }
 
                     if (i == colourCount - 3)
-                    {
                         nextFloat = 1;
-                    }
                     else
-                    {
                         nextFloat = floatGaps[i + 1];
-                    }
 
                     var colour = Extensions.GodotColorToSystemVec4(colourGaps[i]);
                     ImGui.ColorEdit4($"Middle colour: {i + 1}", ref colour);
@@ -88,6 +80,7 @@ namespace DearGoTeria.scenes.DearGoTeria.WorldGeneration.Concepts
 
                     var gap = floatGaps[i];
                     ImGui.SliderFloat($"Float: {i + 1}", ref gap, previousFloat, nextFloat);
+                    gap = Mathf.Clamp(gap, previousFloat, nextFloat);
                     floatGaps[i] = gap;
                 }
 

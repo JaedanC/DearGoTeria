@@ -24,7 +24,7 @@ public class Job
     public List<Job> Waiters { get; } = new List<Job>();
     public List<Job> Dependencies { get; } = new List<Job>();
     public object? Args { get; }
-    public object? Result = null;
+    public object? Result;
     public delegate object WorkDelegate(Random random, List<object> dependencyResults, object? args);
     private readonly WorkDelegate workFunction;
 
@@ -33,7 +33,7 @@ public class Job
     private readonly object dependencyResultsLock = new object();
     private bool isDone = false;
     private readonly object isDoneLock = new object();
-    private Random? random = null;
+    private Random? random;
 
     ///
     /// Create a new Job. The WorkDelegate defines the function that this job

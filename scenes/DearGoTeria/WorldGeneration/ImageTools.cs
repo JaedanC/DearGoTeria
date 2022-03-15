@@ -86,8 +86,8 @@ public static class ImageTools
     {
         image.Lock();
         var baseColour = image.GetPixelv(startingAt);
-        var fringe = new System.Collections.Generic.List<Vector2> {startingAt};
-        var explored = new System.Collections.Generic.HashSet<Vector2>();
+        var fringe = new List<Vector2> {startingAt};
+        var explored = new HashSet<Vector2>();
 
         while (fringe.Count > 0)
         {
@@ -324,7 +324,7 @@ public static class ImageTools
 
         image.Unlock();
     }
-    
+
     public static void Gradient(Image image, Vector2 startPoint, Vector2 endPoint, List<ValueTuple<Color, float>> gaps)
     {
         Assert.GreaterThanEquals(gaps.Count, 2);
@@ -344,7 +344,7 @@ public static class ImageTools
 
             if (percentage < 0)
                 image.SetPixel(i, j, gaps[0].Item1);
-            
+
             if (percentage > 1)
                 image.SetPixel(i, j, gaps[gaps.Count - 1].Item1);
 
@@ -352,8 +352,8 @@ public static class ImageTools
             {
                 var (firstColour, firstFloat) = gaps[colourIdx];
                 var (secondColour, secondFloat) = gaps[colourIdx + 1];
-                
-                Assert.GreaterThanEquals(secondFloat, firstFloat);
+
+                // Assert.GreaterThanEquals(secondFloat, firstFloat);
                 if (firstFloat <= percentage && percentage <= secondFloat)
                 {
                     var gapPercentage = (percentage - firstFloat) / (secondFloat - firstFloat);
@@ -495,29 +495,31 @@ public static class ImageTools
         return newImage;
     }
 
-    public static void GradientPlaceStickers(Random random, Image baseImage, Image gradient, List<Image> stickers)
+    public static void PlaceSticker(Random random, Image baseImage, Vector2 stickerLocation, Image sticker)
     {
-        Assert.Equals(gradient.GetSize(), baseImage.GetSize(), "Gradient and base image must be the same size");
+        var randomStickerOffset = new Vector2(
+            Extensions.RangedRandom(random, 0, sticker.GetWidth()),
+            Extensions.RangedRandom(random, 0, sticker.GetHeight()));
+        BlendImages(baseImage, sticker, Blend.Dig, stickerLocation - randomStickerOffset);
+    }
+
+    public static List<Vector2> SampleGradient(Random random, Image gradient, int attempts)
+    {
+        var winningSamples = new List<Vector2>();
         gradient.Lock();
-        foreach (var sticker in stickers)
+        foreach (var _ in Enumerable.Range(0, attempts))
         {
-            while (true)
-            {
-                var stickerLocation = new Vector2(
-                    Extensions.RangedRandom(random, -sticker.GetWidth(), baseImage.GetWidth()),
-                    Extensions.RangedRandom(random, -sticker.GetHeight(), baseImage.GetHeight()));
+            var sampleLocation = new Vector2(
+                Extensions.RangedRandom(random, 0, gradient.GetWidth()),
+                Extensions.RangedRandom(random, 0, gradient.GetHeight()));
 
-                var gradientTest =
-                    gradient.GetPixelv(Extensions.ClampGodotVector2(stickerLocation, gradient.GetSize()));
-                var testResult = random.NextDouble();
-                if (testResult > gradientTest.v)
-                    continue;
-
-                BlendImages(baseImage, sticker, Blend.Dig, stickerLocation);
-                break;
-            }
+            var test = gradient.GetPixelv(sampleLocation).v;
+            var guess = random.NextDouble();
+            if (guess < test)
+                winningSamples.Add(sampleLocation);
         }
 
         gradient.Unlock();
+        return winningSamples;
     }
 }

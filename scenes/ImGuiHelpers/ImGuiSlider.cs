@@ -33,7 +33,7 @@ public static class ImGuiSlider
     {
         ImGui.SliderInt("Drunkards", ref drunkards, 1, 20);
         ImGui.SliderInt("Steps", ref steps, 1, 5000);
-        ImGui.SliderInt("Sticker count", ref stickerCount, 1, 300);
+        ImGui.SliderInt("Sticker count", ref stickerCount, 1, 1000);
         ImGui.SliderFloat("Max dig radius", ref maxDigRadius, 1, 3);
         Simplex(ref noise);
         ImGui.Checkbox("Use radius", ref useRadius);
